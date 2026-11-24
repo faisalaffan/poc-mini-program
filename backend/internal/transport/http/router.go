@@ -65,16 +65,24 @@ func NewRouter(deps RouterDeps) http.Handler {
 	mux.Handle("PUT /api/v1/sdui/village-screen", protect(sduiH.UpdateVillageScreen))
 	mux.Handle("GET /api/v1/sdui/gacha-screen", protect(sduiH.GetGachaScreen))
 
-	// Swagger UI & OpenAPI Spec
-	mux.HandleFunc("GET /openapi.yaml", NewOpenAPIHandler(deps.Config.OpenAPIPath))
-	mux.Handle("GET /swagger", http.RedirectHandler("/swagger/", http.StatusMovedPermanently))
-	mux.HandleFunc("GET /swagger/", NewSwaggerUIHandler())
+	// Admin Web Auth (melindungi dashboard web, tidak memblokir API/WebView iOS)
+	adminAuth := NewAdminSessionManager(deps.Config.AdminUsername, deps.Config.AdminPassword, deps.Config.JWTSecret)
+	mux.HandleFunc("GET /login", adminAuth.HandleLoginPage)
+	mux.HandleFunc("POST /login", adminAuth.HandleLoginSubmit)
+	mux.HandleFunc("GET /logout", adminAuth.HandleLogout)
+	mux.HandleFunc("POST /logout", adminAuth.HandleLogout)
+	mux.Handle("GET /{$}", adminAuth.RequireAdminCookie(http.RedirectHandler("/sdui-admin/", http.StatusFound)))
 
-	// SDUI Visual Configurator (Admin UI) & Static Map Assets
-	mux.Handle("GET /sdui-admin", http.RedirectHandler("/sdui-admin/", http.StatusMovedPermanently))
-	mux.HandleFunc("GET /sdui-admin/", NewSDUIAdminHandler())
+	// Swagger UI & OpenAPI Spec (dilindungi login admin)
+	mux.Handle("GET /openapi.yaml", adminAuth.RequireAdminCookie(NewOpenAPIHandler(deps.Config.OpenAPIPath)))
+	mux.Handle("GET /swagger", adminAuth.RequireAdminCookie(http.RedirectHandler("/swagger/", http.StatusMovedPermanently)))
+	mux.Handle("GET /swagger/", adminAuth.RequireAdminCookie(NewSwaggerUIHandler()))
+
+	// SDUI Visual Configurator (dilindungi login admin) & Public Map Asset untuk iOS
 	bgHandler := NewSDUIBackgroundHandler(deps.Config.WebDistDir)
-	mux.HandleFunc("GET /sdui-admin/bg-isometric.png", bgHandler)
+	mux.Handle("GET /sdui-admin", adminAuth.RequireAdminCookie(http.RedirectHandler("/sdui-admin/", http.StatusMovedPermanently)))
+	mux.Handle("GET /sdui-admin/", adminAuth.RequireAdminCookie(NewSDUIAdminHandler()))
+	mux.Handle("GET /sdui-admin/bg-isometric.png", adminAuth.RequireAdminCookie(bgHandler))
 	mux.HandleFunc("GET /assets/bg-isometric.png", bgHandler)
 
 	// Vue 3 SPA Static Assets (Pendekatan A)

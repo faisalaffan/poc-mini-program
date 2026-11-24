@@ -20,6 +20,8 @@ type Config struct {
 	DrawMinIntervalMs    int
 	WebDistDir           string
 	OpenAPIPath          string
+	AdminUsername        string
+	AdminPassword        string
 }
 
 // Load membaca konfigurasi dari .env (jika ada) dan environment variables.
@@ -31,12 +33,14 @@ func Load() (Config, error) {
 		BuildVersion:        getEnv("BUILD_VERSION", "0.1.0-poc"),
 		DatabaseURL:         getEnv("DATABASE_URL", "postgres://gacha:gacha_poc_password@127.0.0.1:5432/gacha_poc?sslmode=disable"),
 		JWTSecret:           os.Getenv("JWT_SECRET"),
-		AllowedOrigins:      splitCSV(getEnv("ALLOWED_ORIGINS", "http://127.0.0.1:8080,http://localhost:8080,http://macbook.singapura-parore.ts.net:8080,https://macbook.singapura-parore.ts.net,http://vps-malang.singapura-parore.ts.net:8080,https://gacha-poc.singapura-parore.ts.net")),
+		AllowedOrigins:      splitCSV(getEnv("ALLOWED_ORIGINS", "https://livin-village.faisalaffan.com,http://127.0.0.1:8080,http://localhost:8080,http://macbook.singapura-parore.ts.net:8080,https://macbook.singapura-parore.ts.net")),
 		RateLimitUserPerMin: getEnvInt("RATE_LIMIT_USER_PER_MIN", 60),
 		RateLimitDevPerMin:  getEnvInt("RATE_LIMIT_DEVICE_PER_MIN", 90),
 		DrawMinIntervalMs:   getEnvInt("DRAW_MIN_INTERVAL_MS", 400),
 		WebDistDir:          resolveExistingPath(getEnv("WEB_DIST_DIR", "../web-gacha/dist"), "web-gacha/dist"),
 		OpenAPIPath:         resolveExistingPath(getEnv("OPENAPI_PATH", "../docs/api/openapi.yaml"), "docs/api/openapi.yaml"),
+		AdminUsername:       getEnv("ADMIN_USERNAME", "admin"),
+		AdminPassword:       getEnv("ADMIN_PASSWORD", "LivinVillage2026!"),
 	}
 
 	if cfg.JWTSecret == "" {

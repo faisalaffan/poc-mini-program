@@ -132,7 +132,36 @@ func TestSecurityHeadersAndCSPOnWebView(t *testing.T) {
 		t.Fatalf("expected X-Frame-Options DENY, got %q", rec.Header().Get("X-Frame-Options"))
 	}
 
+	// Tanpa cookie admin, /swagger/ dan /sdui-admin/ harus redirect ke /login
+	swaggerUnauthReq := httptest.NewRequest(http.MethodGet, "/swagger/", nil)
+	swaggerUnauthRec := httptest.NewRecorder()
+	handler.ServeHTTP(swaggerUnauthRec, swaggerUnauthReq)
+	if swaggerUnauthRec.Code != http.StatusFound || !strings.HasPrefix(swaggerUnauthRec.Header().Get("Location"), "/login") {
+		t.Fatalf("expected 302 redirect to /login on /swagger/, got %d", swaggerUnauthRec.Code)
+	}
+
+	adminUnauthReq := httptest.NewRequest(http.MethodGet, "/sdui-admin/", nil)
+	adminUnauthRec := httptest.NewRecorder()
+	handler.ServeHTTP(adminUnauthRec, adminUnauthReq)
+	if adminUnauthRec.Code != http.StatusFound || !strings.HasPrefix(adminUnauthRec.Header().Get("Location"), "/login") {
+		t.Fatalf("expected 302 redirect to /login on /sdui-admin/, got %d", adminUnauthRec.Code)
+	}
+
+	// Login admin terlebih dahulu
+	loginReq := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("username=admin&password=LivinVillage2026%21"))
+	loginReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	loginRec := httptest.NewRecorder()
+	handler.ServeHTTP(loginRec, loginReq)
+	if loginRec.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 on POST /login, got %d", loginRec.Code)
+	}
+	cookies := loginRec.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatalf("expected admin session cookie after login")
+	}
+
 	swaggerReq := httptest.NewRequest(http.MethodGet, "/swagger/", nil)
+	swaggerReq.AddCookie(cookies[0])
 	swaggerRec := httptest.NewRecorder()
 	handler.ServeHTTP(swaggerRec, swaggerReq)
 	if swaggerRec.Code != http.StatusOK || !strings.Contains(swaggerRec.Body.String(), "/openapi.yaml") {
@@ -140,6 +169,7 @@ func TestSecurityHeadersAndCSPOnWebView(t *testing.T) {
 	}
 
 	adminReq := httptest.NewRequest(http.MethodGet, "/sdui-admin/", nil)
+	adminReq.AddCookie(cookies[0])
 	adminRec := httptest.NewRecorder()
 	handler.ServeHTTP(adminRec, adminReq)
 	if adminRec.Code != http.StatusOK || !strings.Contains(adminRec.Body.String(), "SDUI Configurator") {

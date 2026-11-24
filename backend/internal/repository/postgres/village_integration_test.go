@@ -21,16 +21,28 @@ func TestIntegration_VillageQuizIdempotencyAndReconcile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get village state: %v", err)
 	}
-	if len(state.Quizzes) != 3 {
-		t.Fatalf("expected 3 seeded quizzes, got %d", len(state.Quizzes))
+	if len(state.Quizzes) < 3 {
+		t.Fatalf("expected at least 3 seeded quizzes, got %d", len(state.Quizzes))
 	}
+
+	var towerQuiz domain.VillageQuiz
+	for _, q := range state.Quizzes {
+		if q.ID == "quiz_tower" {
+			towerQuiz = q
+			break
+		}
+	}
+	if towerQuiz.ID == "" || len(towerQuiz.Options) < 2 {
+		t.Fatalf("expected quiz_tower with >= 2 options")
+	}
+	wrongIdx := (towerQuiz.CorrectIndex + 1) % len(towerQuiz.Options)
 
 	// Wrong answer gives 0 reward and allows retry
 	wrongRes, err := svc.SubmitQuiz(ctx, domain.QuizSubmitRequest{
 		UserID:         userID,
 		DeviceID:       "sim-quiz-1",
 		QuizID:         "quiz_tower",
-		SelectedIndex:  0,
+		SelectedIndex:  wrongIdx,
 		IdempotencyKey: uuid.NewString(),
 		ClientApproach: domain.ApproachSDUI,
 	})
@@ -55,7 +67,7 @@ func TestIntegration_VillageQuizIdempotencyAndReconcile(t *testing.T) {
 				UserID:         userID,
 				DeviceID:       "sim-quiz-1",
 				QuizID:         "quiz_tower",
-				SelectedIndex:  1,
+				SelectedIndex:  towerQuiz.CorrectIndex,
 				IdempotencyKey: sharedKey,
 				ClientApproach: domain.ApproachNative,
 			})

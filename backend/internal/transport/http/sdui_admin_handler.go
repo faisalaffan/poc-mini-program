@@ -497,6 +497,7 @@ const sduiAdminHTML = `<!doctype html>
       <button id="resetQuizBtn" type="button" class="btn">Reset Kuis User</button>
       <button id="loadBtn" type="button" class="btn">Muat Ulang</button>
       <a href="/swagger/" class="btn btn-ghost">Swagger</a>
+      <a href="/logout" class="btn btn-ghost">Keluar</a>
       <button id="saveBtn" type="button" class="btn btn-primary">Simpan ke DB</button>
     </div>
   </header>
