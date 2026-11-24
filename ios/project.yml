@@ -28,6 +28,14 @@ targets:
       path: GachaPOC/Resources/Info.plist
       properties:
         CFBundleDisplayName: Livin Village
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UIUserInterfaceStyle: Light
   GachaPOCTests:
     type: bundle.unit-test

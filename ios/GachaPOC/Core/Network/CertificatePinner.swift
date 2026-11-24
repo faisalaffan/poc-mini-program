@@ -70,6 +70,7 @@ final class CertificatePinner: NSObject, URLSessionDelegate, Sendable {
             || lower == "localhost"
             || lower == "100.75.130.38"
             || lower == "100.125.74.50"
+            || lower == "livin-village.faisalaffan.com"
             || lower.hasSuffix(".ts.net")
     }
 

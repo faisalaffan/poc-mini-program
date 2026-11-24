@@ -1,16 +1,18 @@
 openapi: 3.1.0
 info:
-  title: POC Gamifikasi Gacha API
+  title: Livin' Village Mini-Program API
   version: 1.0.0
   description: >
-    Kontrak API bersama di OCP untuk melayani tiga pendekatan front-end
+    Kontrak API bersama untuk melayani tiga pendekatan front-end
     (A: WebView Vue 3 SPA, B: Native iOS SwiftUI, C: Server-Driven UI).
     Semua data dan saldo poin bersifat sintetis untuk keperluan POC.
 servers:
+  - url: https://livin-village.faisalaffan.com
+    description: Production (Cloudflare)
+  - url: http://macbook.singapura-parore.ts.net:8080
+    description: MacBook Tailscale
   - url: http://127.0.0.1:8080
     description: Local Development Server
-  - url: https://gacha-poc.apps.ocp.example.internal
-    description: OpenShift (OCP) Staging Route
 
 components:
   securitySchemes:
@@ -479,6 +481,10 @@ paths:
           name: simulate_schema_version
           schema:
             type: integer
+        - in: query
+          name: include_answers
+          schema:
+            type: boolean
       responses:
         '200':
           description: SDUI Screen JSON
@@ -501,6 +507,10 @@ paths:
           name: simulate_schema_version
           schema:
             type: integer
+        - in: query
+          name: include_answers
+          schema:
+            type: boolean
       responses:
         '200':
           description: SDUI Village Screen JSON
@@ -559,3 +569,21 @@ paths:
           description: Quiz evaluated and ledger credited if correct
         '409':
           description: Quiz already completed or idempotency mismatch
+  /api/v1/village/quizzes/reset:
+    post:
+      summary: Reset completed quiz submissions for a user (POC testing helper)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  example: demo-user-001
+      responses:
+        '200':
+          description: User quiz submissions reset

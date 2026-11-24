@@ -28,6 +28,7 @@ final class CertificatePinnerTests: XCTestCase {
         XCTAssertTrue(pinner.isDebugHost("vps-malang.singapura-parore.ts.net"))
         XCTAssertTrue(pinner.isDebugHost("100.125.74.50"))
         XCTAssertTrue(pinner.isDebugHost("127.0.0.1"))
+        XCTAssertTrue(pinner.isDebugHost("livin-village.faisalaffan.com"))
         XCTAssertFalse(pinner.isDebugHost("untrusted.example.com"))
     }
 }
