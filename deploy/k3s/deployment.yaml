@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gacha-poc-backend
+  namespace: gacha-poc
+  labels:
+    app: gacha-poc-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gacha-poc-backend
+  template:
+    metadata:
+      labels:
+        app: gacha-poc-backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backend
+          image: poc-gacha-backend:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: gacha-poc-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gacha-poc-secrets
+                  key: database-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gacha-poc-secrets
+                  key: jwt-secret
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gacha-poc-backend
+  namespace: gacha-poc
+  labels:
+    app: gacha-poc-backend
+spec:
+  type: NodePort
+  selector:
+    app: gacha-poc-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080

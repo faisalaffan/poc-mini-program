@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gacha-poc-config
+  labels:
+    app: gacha-poc-backend
+data:
+  PORT: "8080"
+  APP_ENV: "poc"
+  BUILD_VERSION: "0.1.0-ocp"
+  ALLOWED_ORIGINS: "https://gacha-poc.apps.ocp.example.internal"
+  RATE_LIMIT_USER_PER_MIN: "60"
+  RATE_LIMIT_DEVICE_PER_MIN: "90"
+  DRAW_MIN_INTERVAL_MS: "400"
+  WEB_DIST_DIR: "/app/web-dist"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gacha-poc-backend
+  labels:
+    app: gacha-poc-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gacha-poc-backend
+  template:
+    metadata:
+      labels:
+        app: gacha-poc-backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backend
+          image: image-registry.openshift-image-registry.svc:5000/poc-gamifikasi/gacha-poc-backend:0.1.0-ocp
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: gacha-poc-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gacha-poc-secrets
+                  key: database-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gacha-poc-secrets
+                  key: jwt-secret
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gacha-poc-backend
+  labels:
+    app: gacha-poc-backend
+spec:
+  selector:
+    app: gacha-poc-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: gacha-poc-backend
+  labels:
+    app: gacha-poc-backend
+  annotations:
+    haproxy.router.openshift.io/timeout: 30s
+spec:
+  to:
+    kind: Service
+    name: gacha-poc-backend
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

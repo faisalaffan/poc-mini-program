@@ -1,0 +1,561 @@
+openapi: 3.1.0
+info:
+  title: POC Gamifikasi Gacha API
+  version: 1.0.0
+  description: >
+    Kontrak API bersama di OCP untuk melayani tiga pendekatan front-end
+    (A: WebView Vue 3 SPA, B: Native iOS SwiftUI, C: Server-Driven UI).
+    Semua data dan saldo poin bersifat sintetis untuk keperluan POC.
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local Development Server
+  - url: https://gacha-poc.apps.ocp.example.internal
+    description: OpenShift (OCP) Staging Route
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              example: INSUFFICIENT_BALANCE
+            message:
+              type: string
+            request_id:
+              type: string
+    SessionRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: demo-user-001
+        device_id:
+          type: string
+          example: ios-sim-001
+    SessionResponse:
+      type: object
+      required: [token, token_type, expires_at, user_id, device_id]
+      properties:
+        token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_at:
+          type: string
+          format: date-time
+        user_id:
+          type: string
+        device_id:
+          type: string
+    WebViewTokenResponse:
+      type: object
+      required: [token, expires_at, ttl_seconds, scope]
+      properties:
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        ttl_seconds:
+          type: integer
+          example: 120
+        scope:
+          type: string
+          example: gacha:webview
+    BalanceResponse:
+      type: object
+      required: [user_id, balance, last_ledger_id, updated_at]
+      properties:
+        user_id:
+          type: string
+        balance:
+          type: integer
+          format: int64
+          example: 1000
+        last_ledger_id:
+          type: integer
+          format: int64
+        updated_at:
+          type: string
+          format: date-time
+    RewardTier:
+      type: object
+      required: [id, code, name, rarity, reward_points, weight_bps, probability_percent, display_order]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        rarity:
+          type: string
+          enum: [COMMON, UNCOMMON, RARE, EPIC, JACKPOT]
+        reward_points:
+          type: integer
+          format: int64
+        weight_bps:
+          type: integer
+        probability_percent:
+          type: number
+          format: double
+        display_order:
+          type: integer
+    ProbabilitiesResponse:
+      type: object
+      required: [table_version, draw_cost, total_weight_bps, tiers]
+      properties:
+        table_version:
+          type: string
+          example: v1.0.0
+        draw_cost:
+          type: integer
+          format: int64
+          example: 100
+        total_weight_bps:
+          type: integer
+          example: 10000
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/RewardTier'
+    DrawRequest:
+      type: object
+      properties:
+        expected_table_version:
+          type: string
+          example: v1.0.0
+    DrawResponse:
+      type: object
+      required:
+        - draw_id
+        - idempotency_key
+        - idempotency_replayed
+        - table_version
+        - draw_cost
+        - reward
+        - balance_before
+        - balance_after
+        - client_approach
+        - created_at
+      properties:
+        draw_id:
+          type: string
+          format: uuid
+        idempotency_key:
+          type: string
+        idempotency_replayed:
+          type: boolean
+        table_version:
+          type: string
+        draw_cost:
+          type: integer
+          format: int64
+        reward:
+          $ref: '#/components/schemas/RewardTier'
+        balance_before:
+          type: integer
+          format: int64
+        balance_after:
+          type: integer
+          format: int64
+        client_approach:
+          type: string
+          enum: [webview, native, sdui]
+        created_at:
+          type: string
+          format: date-time
+    HistoryItem:
+      type: object
+      required: [draw_id, table_version, draw_cost, reward_code, reward_name, rarity, reward_points, balance_after, client_approach, created_at]
+      properties:
+        draw_id:
+          type: string
+          format: uuid
+        table_version:
+          type: string
+        draw_cost:
+          type: integer
+          format: int64
+        reward_code:
+          type: string
+        reward_name:
+          type: string
+        rarity:
+          type: string
+        reward_points:
+          type: integer
+          format: int64
+        balance_after:
+          type: integer
+          format: int64
+        client_approach:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    HistoryResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryItem'
+    TopUpRequest:
+      type: object
+      required: [points]
+      properties:
+        points:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 100000
+    ReconcileResponse:
+      type: object
+      required: [user_id, ledger_balance, computed_balance, total_seeded, total_draw_cost, total_reward_points, total_draws, balanced]
+      properties:
+        user_id:
+          type: string
+        ledger_balance:
+          type: integer
+          format: int64
+        computed_balance:
+          type: integer
+          format: int64
+        total_seeded:
+          type: integer
+          format: int64
+        total_quiz_rewards:
+          type: integer
+          format: int64
+        total_draw_cost:
+          type: integer
+          format: int64
+        total_reward_points:
+          type: integer
+          format: int64
+        total_draws:
+          type: integer
+        balanced:
+          type: boolean
+    SDUINode:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [text, button, balance_card, probability_list, gacha_box, history_list, floating_banner, floating_action, map_pin]
+        props:
+          type: object
+          additionalProperties: true
+        action:
+          type: string
+          enum: [draw, refresh, toggle_history, open_quiz, open_help, open_rewards]
+    SDUIScreenResponse:
+      type: object
+      required: [schema_version, screen_id, variant, table_version, supported_actions, components, generated_at]
+      properties:
+        schema_version:
+          type: integer
+          example: 1
+        screen_id:
+          type: string
+          example: livin_village_home
+        variant:
+          type: string
+          example: default
+        navigation_title:
+          type: string
+          example: Livin' Village
+        background_asset:
+          type: string
+          example: bg-isometric
+        table_version:
+          type: string
+          example: v1.0.0
+        supported_actions:
+          type: array
+          items:
+            type: string
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/SDUINode'
+        generated_at:
+          type: string
+          format: date-time
+
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Service alive
+  /readyz:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Database connected
+  /api/v1/auth/session:
+    post:
+      summary: Create synthetic POC master session JWT
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+      responses:
+        '200':
+          description: Session token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+  /api/v1/auth/webview-token:
+    post:
+      summary: Issue short-lived WebView token from native master session (F7)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Short-lived token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebViewTokenResponse'
+  /api/v1/gacha/balance:
+    get:
+      summary: Get current point balance from append-only ledger (F1)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current point balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+  /api/v1/gacha/probabilities:
+    get:
+      summary: Get active probability table with table_version (F2)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Probability table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProbabilitiesResponse'
+  /api/v1/gacha/draw:
+    post:
+      summary: Execute idempotent CSPRNG gacha draw (F3, F6)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Device-ID
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Client-Approach
+          required: false
+          schema:
+            type: string
+            enum: [webview, native, sdui]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrawRequest'
+      responses:
+        '200':
+          description: Draw result (fresh or idempotent replay)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DrawResponse'
+        '409':
+          description: Table version mismatch or idempotency payload mismatch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Insufficient point balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: Rate limit or automation burst detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/gacha/history:
+    get:
+      summary: Get recent draw history for current user (F5)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Draw history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryResponse'
+  /api/v1/gacha/synthetic-topup:
+    post:
+      summary: Add synthetic SEED points in POC mode
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopUpRequest'
+      responses:
+        '200':
+          description: Updated balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+  /api/v1/gacha/reconcile:
+    get:
+      summary: Reconcile append-only ledger against SEED + gacha_draws
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Reconciliation report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconcileResponse'
+  /api/v1/sdui/gacha-screen:
+    get:
+      summary: Fetch versioned SDUI screen payload (Approach C)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: variant
+          schema:
+            type: string
+            enum: [default, promo, compact]
+        - in: query
+          name: simulate_schema_version
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: SDUI Screen JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SDUIScreenResponse'
+  /api/v1/sdui/village-screen:
+    get:
+      summary: Fetch full-screen Livin' Village SDUI screen payload from PostgreSQL (Approach C)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: variant
+          schema:
+            type: string
+            enum: [default, promo, compact]
+        - in: query
+          name: simulate_schema_version
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: SDUI Village Screen JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SDUIScreenResponse'
+    put:
+      summary: Upsert SDUI screen layout & components in PostgreSQL (sdui_screens)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SDUIScreenResponse'
+      responses:
+        '200':
+          description: Updated SDUI Screen stored in PostgreSQL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SDUIScreenResponse'
+  /api/v1/village/state:
+    get:
+      summary: Get Livin' Village campaign banner, point balance, rules, and 3 building quizzes
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Village quiz state
+  /api/v1/village/quizzes/{quizID}/submit:
+    post:
+      summary: Submit answer for a building quiz with Idempotency-Key
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: quizID
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Device-ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Quiz evaluated and ledger credited if correct
+        '409':
+          description: Quiz already completed or idempotency mismatch

@@ -1,0 +1,25 @@
+# OS & Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Go
+backend/bin/
+backend/coverage.out
+*.test
+
+# Node / Vue
+web-gacha/node_modules/
+web-gacha/dist/
+web-gacha/.vite/
+
+# Xcode / iOS
+ios/GachaPOC.xcodeproj/
+ios/DerivedData/
+*.xcuserdata/
+*.xcuserstate
+
+# Environment & K8s Secrets
+.env
+.env.local
+deploy/k3s/secret.yaml

@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: poc-gacha-postgres
+    environment:
+      POSTGRES_USER: gacha
+      POSTGRES_PASSWORD: gacha_poc_password
+      POSTGRES_DB: gacha_poc
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gacha -d gacha_poc"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: poc-gacha-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      APP_ENV: "poc"
+      BUILD_VERSION: "0.1.0-poc"
+      DATABASE_URL: "postgres://gacha:gacha_poc_password@postgres:5432/gacha_poc?sslmode=disable"
+      JWT_SECRET: "poc-local-dev-secret-change-in-ocp-32bytes"
+      ALLOWED_ORIGINS: "http://127.0.0.1:8080,http://localhost:8080,http://macbook.singapura-parore.ts.net:8080,https://macbook.singapura-parore.ts.net"
+      RATE_LIMIT_USER_PER_MIN: "60"
+      RATE_LIMIT_DEVICE_PER_MIN: "90"
+      DRAW_MIN_INTERVAL_MS: "400"
+      WEB_DIST_DIR: "/app/web-dist"
+    ports:
+      - "8080:8080"
+
+volumes:
+  pg_data:

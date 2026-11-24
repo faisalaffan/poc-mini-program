@@ -1,0 +1,50 @@
+name: GachaPOC
+options:
+  bundleIdPrefix: id.co.poc.gacha
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: NO
+targets:
+  GachaPOC:
+    type: application
+    platform: iOS
+    sources:
+      - path: GachaPOC
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: id.co.poc.gacha.app
+        INFOPLIST_FILE: GachaPOC/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          INFOPLIST_FILE: GachaPOC/Resources/Info-Debug.plist
+    info:
+      path: GachaPOC/Resources/Info.plist
+      properties:
+        UIUserInterfaceStyle: Light
+  GachaPOCTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: GachaPOCTests
+    dependencies:
+      - target: GachaPOC
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: id.co.poc.gacha.tests
+        INFOPLIST_FILE: GachaPOCTests/Info.plist
+schemes:
+  GachaPOC:
+    build:
+      targets:
+        GachaPOC: all
+        GachaPOCTests: [test]
+    test:
+      targets:
+        - GachaPOCTests

@@ -1,0 +1,6 @@
+.git
+web-gacha/node_modules
+web-gacha/dist
+ios
+backend/bin
+.DS_Store
