@@ -5,7 +5,7 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - deployment.yaml
-  - ingress-tailscale.yaml
+  - ingress-cloudflare.yaml
 
 images:
   - name: poc-gacha-backend

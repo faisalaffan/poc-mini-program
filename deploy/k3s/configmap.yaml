@@ -9,7 +9,7 @@ data:
   PORT: "8080"
   APP_ENV: "poc"
   BUILD_VERSION: "0.1.0-k3s"
-  ALLOWED_ORIGINS: "https://gacha-poc.singapura-parore.ts.net,http://vps-malang.singapura-parore.ts.net:30080,http://macbook.singapura-parore.ts.net:8080,http://127.0.0.1:8080"
+  ALLOWED_ORIGINS: "https://livin-village.faisalaffan.com,https://gacha-poc.singapura-parore.ts.net,http://vps-malang.singapura-parore.ts.net:30080,http://macbook.singapura-parore.ts.net:8080,http://127.0.0.1:8080"
   RATE_LIMIT_USER_PER_MIN: "60"
   RATE_LIMIT_DEVICE_PER_MIN: "90"
   DRAW_MIN_INTERVAL_MS: "400"

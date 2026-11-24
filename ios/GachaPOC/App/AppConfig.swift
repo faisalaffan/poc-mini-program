@@ -2,6 +2,7 @@ import Foundation
 import Observation
 
 enum BackendEndpointPreset: String, CaseIterable, Identifiable, Sendable {
+    case cloudflareHTTPS = "https://livin-village.faisalaffan.com"
     case k3sTailscaleHTTPS = "https://gacha-poc.singapura-parore.ts.net"
     case k3sNodePortHTTP = "http://vps-malang.singapura-parore.ts.net:30080"
     case macbookTailscaleHTTP = "http://macbook.singapura-parore.ts.net:8080"
@@ -11,6 +12,8 @@ enum BackendEndpointPreset: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
+        case .cloudflareHTTPS:
+            return "Cloudflare (livin-village.faisalaffan.com)"
         case .k3sTailscaleHTTPS:
             return "k3s VPS (Tailscale HTTPS)"
         case .k3sNodePortHTTP:
@@ -26,8 +29,9 @@ enum BackendEndpointPreset: String, CaseIterable, Identifiable, Sendable {
 @MainActor
 @Observable
 final class AppConfig {
-    var baseURLString: String = BackendEndpointPreset.k3sTailscaleHTTPS.rawValue
+    var baseURLString: String = BackendEndpointPreset.cloudflareHTTPS.rawValue
     var allowedHosts: Set<String> = [
+        "livin-village.faisalaffan.com",
         "gacha-poc.singapura-parore.ts.net",
         "vps-malang.singapura-parore.ts.net",
         "100.125.74.50",

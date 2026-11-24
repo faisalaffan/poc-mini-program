@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: livin-village-cloudflare
+  namespace: gacha-poc
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: livin-village.faisalaffan.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gacha-poc-backend
+                port:
+                  number: 8080
+  tls:
+    - hosts:
+        - livin-village.faisalaffan.com
+      secretName: livin-village-tls

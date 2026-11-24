@@ -27,6 +27,7 @@ targets:
     info:
       path: GachaPOC/Resources/Info.plist
       properties:
+        CFBundleDisplayName: Livin Village
         UIUserInterfaceStyle: Light
   GachaPOCTests:
     type: bundle.unit-test
