@@ -82,6 +82,7 @@ func NewRouter(deps RouterDeps) http.Handler {
 	bgHandler := NewSDUIBackgroundHandler(deps.Config.WebDistDir)
 	mux.Handle("GET /sdui-admin", adminAuth.RequireAdminCookie(http.RedirectHandler("/sdui-admin/", http.StatusMovedPermanently)))
 	mux.Handle("GET /sdui-admin/", adminAuth.RequireAdminCookie(NewSDUIAdminHandler()))
+	mux.Handle("GET /sdui-admin/json", adminAuth.RequireAdminCookie(NewSDUIJsonEditorHandler()))
 	mux.Handle("GET /sdui-admin/bg-isometric.png", adminAuth.RequireAdminCookie(bgHandler))
 	mux.HandleFunc("GET /assets/bg-isometric.png", bgHandler)
 

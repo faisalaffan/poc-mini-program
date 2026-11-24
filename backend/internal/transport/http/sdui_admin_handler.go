@@ -40,6 +40,15 @@ func NewSDUIAdminHandler() http.HandlerFunc {
 	}
 }
 
+// NewSDUIJsonEditorHandler menyajikan editor JSON ala VS Code (Monaco Editor) di halaman terpisah.
+func NewSDUIJsonEditorHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(sduiJsonEditorHTML))
+	}
+}
+
 const sduiAdminHTML = `<!doctype html>
 <html lang="id">
 <head>
@@ -650,10 +659,13 @@ const sduiAdminHTML = `<!doctype html>
       </div>
 
       <div id="jsonView" class="inspector-body" style="display:none;">
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <a id="openJsonPageLink" href="/sdui-admin/json?variant=default" target="_blank" rel="noopener" class="btn" style="flex:1;justify-content:center;">Buka Editor VS Code ↗</a>
+          <button id="applyJsonBtn" type="button" class="btn" style="flex:1;justify-content:center;">Terapkan JSON</button>
+        </div>
         <div class="field">
           <textarea id="jsonBox" class="json-editor"></textarea>
         </div>
-        <button id="applyJsonBtn" type="button" class="btn" style="width:100%;justify-content:center;">Terapkan JSON ke Preview</button>
       </div>
     </aside>
   </main>
@@ -986,6 +998,8 @@ const sduiAdminHTML = `<!doctype html>
       btn.addEventListener('click', () => {
         currentVariant = btn.dataset.variant;
         document.querySelectorAll('#variantSeg button').forEach((b) => b.classList.toggle('active', b === btn));
+        const jsonLink = el('openJsonPageLink');
+        if (jsonLink) jsonLink.href = '/sdui-admin/json?variant=' + encodeURIComponent(currentVariant);
         loadScreen();
       });
     });
@@ -1124,6 +1138,232 @@ const sduiAdminHTML = `<!doctype html>
     });
 
     loadScreen();
+  </script>
+</body>
+</html>
+`
+
+const sduiJsonEditorHTML = `<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JSON Editor · Livin' Village SDUI</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .topbar {
+      height: 44px;
+      flex-shrink: 0;
+      background: #252526;
+      border-bottom: 1px solid #333333;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12.5px;
+    }
+    .left, .right { display: flex; align-items: center; gap: 10px; }
+    .tab-file {
+      background: #1e1e1e;
+      border: 1px solid #333333;
+      border-bottom-color: #1e1e1e;
+      padding: 6px 12px;
+      border-radius: 5px 5px 0 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      color: #e5c07b;
+    }
+    select, button, a.btn {
+      font: inherit;
+      font-size: 12px;
+      border-radius: 5px;
+      border: 1px solid #3c3c3c;
+      background: #2d2d2d;
+      color: #cccccc;
+      padding: 5px 10px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    button:hover, a.btn:hover { background: #383838; color: #ffffff; }
+    button.primary {
+      background: #005ae2;
+      border-color: #005ae2;
+      color: #ffffff;
+      font-weight: 600;
+    }
+    button.primary:hover { background: #0049b8; }
+    #editorContainer { flex: 1; min-height: 0; width: 100%; }
+    .statusbar {
+      height: 24px;
+      flex-shrink: 0;
+      background: #005ae2;
+      color: #ffffff;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+    }
+    .statusbar.err { background: #b91c1c; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="left">
+      <a href="/sdui-admin/" class="btn">← Studio</a>
+      <span id="fileTab" class="tab-file">livin_village_home.default.json</span>
+      <select id="variantSelect">
+        <option value="default">default</option>
+        <option value="promo">promo</option>
+        <option value="compact">compact</option>
+      </select>
+    </div>
+    <div class="right">
+      <button id="formatBtn" type="button">Format JSON</button>
+      <button id="reloadBtn" type="button">Muat Ulang</button>
+      <button id="saveBtn" type="button" class="primary">Simpan ke DB (⌘S)</button>
+    </div>
+  </header>
+
+  <div id="editorContainer"></div>
+
+  <footer id="statusBar" class="statusbar">
+    <span id="statusText">Memuat editor...</span>
+    <span id="cursorPos">Ln 1, Col 1 · JSON</span>
+  </footer>
+
+  <script src="https://unpkg.com/monaco-editor@0.52.2/min/vs/loader.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    let currentVariant = params.get('variant') || 'default';
+    let token = '';
+    let editor = null;
+
+    const el = (id) => document.getElementById(id);
+    el('variantSelect').value = currentVariant;
+
+    function setStatus(msg, isErr = false) {
+      el('statusText').textContent = msg;
+      el('statusBar').className = 'statusbar' + (isErr ? ' err' : '');
+    }
+
+    async function ensureAuth() {
+      if (token) return token;
+      let deviceId = localStorage.getItem('sdui_admin_device_id');
+      if (!deviceId) {
+        deviceId = 'sdui-admin-' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem('sdui_admin_device_id', deviceId);
+      }
+      const res = await fetch('/api/v1/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: deviceId })
+      });
+      if (!res.ok) throw new Error('Gagal auth (' + res.status + ')');
+      const data = await res.json();
+      token = data.token || data.access_token || '';
+      return token;
+    }
+
+    async function apiFetch(path, opts = {}) {
+      await ensureAuth();
+      const send = () => fetch(path, {
+        ...opts,
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+          ...(opts.headers || {})
+        }
+      });
+      let res = await send();
+      if (res.status === 401) {
+        token = '';
+        await ensureAuth();
+        res = await send();
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || ('HTTP ' + res.status));
+      return data;
+    }
+
+    async function loadJSON() {
+      setStatus('Memuat schema ' + currentVariant + '...');
+      el('fileTab').textContent = 'livin_village_home.' + currentVariant + '.json';
+      try {
+        const data = await apiFetch('/api/v1/sdui/village-screen?variant=' + encodeURIComponent(currentVariant) + '&include_answers=true');
+        const text = JSON.stringify(data, null, 2);
+        if (editor) editor.setValue(text);
+        setStatus('Dimuat dari PostgreSQL (' + (data.components?.length || 0) + ' komponen)');
+      } catch (err) {
+        setStatus(err.message, true);
+      }
+    }
+
+    async function saveJSON() {
+      if (!editor) return;
+      let parsed;
+      try {
+        parsed = JSON.parse(editor.getValue());
+      } catch (err) {
+        setStatus('JSON tidak valid: ' + err.message, true);
+        return;
+      }
+      parsed.variant = currentVariant;
+      setStatus('Menyimpan ke PostgreSQL...');
+      try {
+        const updated = await apiFetch('/api/v1/sdui/village-screen', {
+          method: 'PUT',
+          body: JSON.stringify(parsed)
+        });
+        setStatus('Tersimpan ke PostgreSQL (' + updated.variant + ')');
+      } catch (err) {
+        setStatus('Gagal menyimpan: ' + err.message, true);
+      }
+    }
+
+    require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.52.2/min/vs' } });
+    require(['vs/editor/editor.main'], () => {
+      editor = monaco.editor.create(el('editorContainer'), {
+        value: '{\n  "loading": true\n}',
+        language: 'json',
+        theme: 'vs-dark',
+        automaticLayout: true,
+        fontSize: 13,
+        lineNumbers: 'on',
+        minimap: { enabled: true },
+        tabSize: 2,
+        formatOnPaste: true,
+        scrollBeyondLastLine: false,
+        bracketPairColorization: { enabled: true }
+      });
+
+      editor.onDidChangeCursorPosition((e) => {
+        el('cursorPos').textContent = 'Ln ' + e.position.lineNumber + ', Col ' + e.position.column + ' · JSON';
+      });
+
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveJSON);
+      loadJSON();
+    });
+
+    el('variantSelect').addEventListener('change', () => {
+      currentVariant = el('variantSelect').value;
+      loadJSON();
+    });
+    el('formatBtn').addEventListener('click', () => {
+      if (editor) editor.getAction('editor.action.formatDocument').run();
+    });
+    el('reloadBtn').addEventListener('click', loadJSON);
+    el('saveBtn').addEventListener('click', saveJSON);
   </script>
 </body>
 </html>

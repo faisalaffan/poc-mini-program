@@ -175,6 +175,14 @@ func TestSecurityHeadersAndCSPOnWebView(t *testing.T) {
 	if adminRec.Code != http.StatusOK || !strings.Contains(adminRec.Body.String(), "SDUI Configurator") {
 		t.Fatalf("expected SDUI Admin HTML on /sdui-admin/, got %d", adminRec.Code)
 	}
+
+	jsonReq := httptest.NewRequest(http.MethodGet, "/sdui-admin/json", nil)
+	jsonReq.AddCookie(cookies[0])
+	jsonRec := httptest.NewRecorder()
+	handler.ServeHTTP(jsonRec, jsonReq)
+	if jsonRec.Code != http.StatusOK || !strings.Contains(jsonRec.Body.String(), "monaco-editor") {
+		t.Fatalf("expected Monaco JSON editor HTML on /sdui-admin/json, got %d", jsonRec.Code)
+	}
 }
 
 func TestTokenScopeIsolation(t *testing.T) {
