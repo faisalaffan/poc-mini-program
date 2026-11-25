@@ -44,14 +44,14 @@ final class CertificatePinner: NSObject, URLSessionDelegate, Sendable {
             return (.cancelAuthenticationChallenge, nil)
         }
 
-        // Di lingkungan produksi/staging OCP, pin public key SHA-256 wajib cocok.
+        // Jika pin public key SHA-256 dikonfigurasi, wajib cocok dengan chain sertifikat.
+        // Jika kosong (mis. Cloudflare Universal SSL dengan rotasi otomatis), koneksi tetap
+        // divalidasi oleh host allowlist + SecTrustEvaluateWithError dari sistem iOS.
         if !pinnedPublicKeyHashes.isEmpty {
             let hashes = extractPublicKeyHashes(from: trust)
             if hashes.isDisjoint(with: pinnedPublicKeyHashes) {
                 return (.cancelAuthenticationChallenge, nil)
             }
-        } else if !isDebugHost(host) || !allowLocalDebugPlaintext {
-            return (.cancelAuthenticationChallenge, nil)
         }
 
         return (.useCredential, URLCredential(trust: trust))
