@@ -22,4 +22,6 @@ ios/DerivedData/
 # Environment & K8s Secrets
 .env
 .env.local
+.env.backup
+.env.*.backup
 deploy/k3s/secret.yaml

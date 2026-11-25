@@ -28,7 +28,7 @@ final class HardenedWebViewCoordinator: NSObject, WKNavigationDelegate, UIScroll
             return .cancel
         }
         let scheme = url.scheme?.lowercased() ?? ""
-        guard scheme == "https" || (pinner.allowLocalDebugPlaintext && scheme == "http") else {
+        guard scheme == "https" || ((pinner.allowLocalDebugPlaintext || pinner.isDebugHost(url.host ?? "")) && scheme == "http") else {
             metrics.recordSecurityEvent(
                 source: "ApproachA.WebView",
                 decision: "BLOCKED_SCHEME",

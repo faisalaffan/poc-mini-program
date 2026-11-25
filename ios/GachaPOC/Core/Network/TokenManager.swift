@@ -21,7 +21,10 @@ actor TokenManager {
     }
 
     func updateBaseURL(_ newURL: URL) {
-        self.baseURL = newURL
+        if self.baseURL != newURL {
+            self.baseURL = newURL
+            keychain.delete(forKey: Keys.masterToken)
+        }
     }
 
     func getOrCreateDeviceID() -> String {

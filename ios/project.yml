@@ -57,3 +57,12 @@ schemes:
     test:
       targets:
         - GachaPOCTests
+    archive:
+      preActions:
+        - name: Auto-increment CFBundleVersion on Archive
+          settingsTarget: GachaPOC
+          script: |
+            PLIST="${PROJECT_DIR}/GachaPOC/Resources/Info.plist"
+            CURRENT=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST" 2>/dev/null || echo 0)
+            NEXT=$((CURRENT + 1))
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEXT" "$PLIST"

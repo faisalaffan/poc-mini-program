@@ -20,7 +20,13 @@ enum BackendEndpointPreset: String, CaseIterable, Identifiable, Sendable {
 @MainActor
 @Observable
 final class AppConfig {
-    var baseURLString: String = BackendEndpointPreset.cloudflareHTTPS.rawValue
+    private static let baseURLDefaultsKey = "gacha.selected_base_url"
+
+    var baseURLString: String {
+        didSet {
+            UserDefaults.standard.set(baseURLString, forKey: Self.baseURLDefaultsKey)
+        }
+    }
     var allowedHosts: Set<String> = [
         "livin-village.faisalaffan.com",
         "macbook.singapura-parore.ts.net",
@@ -31,6 +37,15 @@ final class AppConfig {
     var sduiVariant: String = "default"
     var simulateUnsupportedSDUISchema: Bool = false
     var simulateTimeoutOnNextDraw: Bool = false
+
+    init() {
+        if let saved = UserDefaults.standard.string(forKey: Self.baseURLDefaultsKey),
+           BackendEndpointPreset(rawValue: saved) != nil {
+            self.baseURLString = saved
+        } else {
+            self.baseURLString = BackendEndpointPreset.cloudflareHTTPS.rawValue
+        }
+    }
 
     var baseURL: URL {
         URL(string: baseURLString) ?? URL(string: BackendEndpointPreset.cloudflareHTTPS.rawValue)!
